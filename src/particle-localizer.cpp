@@ -421,7 +421,7 @@ int main(int argc, char* argv[], char *envp[]) {
 					else {
 						switch(cuival) {
 						// exit
-						case 'e': proc_shutoff(); break;
+						case 'Q': proc_shutoff(); break;
 						// help
 						case 'h': gcui.show(stderr, "   "); break;
 						// debug log-mode
@@ -462,16 +462,16 @@ int main(int argc, char* argv[], char *envp[]) {
 						case 'o': cuito = 0;		break;
 
 						case 'S': {
-							gnd::cui_reader cui;
-							int cuival2 = 0;
-							char cuiarg2[512];
+							gnd::cui_reader cuiS;
+							int cuivalS = 0;
+							char cuiargS[512];
 
-							static const gnd::cui_command cmd[] = {
+							static const gnd::cui_command cmdS[] = {
 									{"Cancel",		'c',	"cancel"},
 									{"", '\0'}
 							};
 
-							gcui.set_command(cmd, sizeof(cmd) / sizeof(cmd[0]));
+							cuiS.set_command(cmdS, sizeof(cmdS) / sizeof(cmdS[0]));
 
 							if ( ssm_initpos.isOpen() ) {
 								// ignore old data
@@ -482,13 +482,19 @@ int main(int argc, char* argv[], char *envp[]) {
 							::fprintf(stderr, "     > push Enter to cancel\n");
 							while (1) {
 								if ( !ssm_initpos.isOpen() ) {
-									if( ssm_initpos.openWait("init-pos", 0, 0.1) ){
+									if( ssm_initpos.openWait("init-pos", 0, 0.1) ) {
 										ssm_initpos.setBlocking(false);
 										ssm_initpos.readLast();
 									}
 								}
 								else {
 									if( ssm_initpos.readNew() ) {
+										ssm_position.data.x = ssm_initpos.data.x;
+										ssm_position.data.y = ssm_initpos.data.y;
+										ssm_position.data.theta = ssm_initpos.data.theta;
+										ssm_position.data.v = 0;
+										ssm_position.data.w = 0;
+
 										myu_ini[0][PARTICLE_X] = ssm_initpos.data.x;
 										myu_ini[0][PARTICLE_Y] = ssm_initpos.data.y;
 										myu_ini[0][PARTICLE_THETA] = ssm_initpos.data.theta;
@@ -496,10 +502,13 @@ int main(int argc, char* argv[], char *envp[]) {
 										ssm_particle.data.init_particle(&myu_ini,
 												&pconf.poserr_cover_ini, &pconf.syserr_cover_ini, pconf.particles.value + pconf.random_sampling.value);
 
+										ssm_position.write();
+										ssm_particle.write();
+										::fprintf(stderr, "  ... read initial position\n");
 										break;
 									}
 								}
-								if( gcui.poll(&cuival2, cuiarg2, sizeof(cuiarg2), 1.0 / 60.0) > 0 ){
+								if( cuiS.poll(&cuivalS, cuiargS, sizeof(cuiargS), 1.0 / 60.0) > 0 ){
 									::fprintf(stderr, "  ... canceled\n");
 									break;
 								}
